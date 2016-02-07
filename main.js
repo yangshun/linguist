@@ -7,6 +7,9 @@ const BrowserWindow = electron.BrowserWindow;
 const Menu = electron.Menu;
 const crashReporter = electron.crashReporter;
 const shell = electron.shell;
+const ipcMain = require('electron').ipcMain;
+const fs = require('fs');
+
 let menu;
 let template;
 let mainWindow = null;
@@ -237,4 +240,10 @@ app.on('ready', () => {
     menu = Menu.buildFromTemplate(template);
     mainWindow.setMenu(menu);
   }
+});
+
+ipcMain.on('save', (event, filePath, fileData) => {
+  fs.writeFile(filePath, `${JSON.stringify(fileData, null, 2)}\n`, (err, data) => {
+    console.log(err, data);
+  });
 });

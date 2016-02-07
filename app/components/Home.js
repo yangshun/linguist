@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Link } from 'react-router';
 import _ from 'lodash';
 import classnames from 'classnames';
+const { ipcRenderer } = require('electron');
 
 const KEY_DELIMITER = ' > ';
 
@@ -11,8 +12,25 @@ export default class Home extends Component {
     this.state = {
       locales: {},
       masterFormat: [],
-      hiddenKeys: {}
+      hiddenKeys: {},
+      editingKey: null
     };
+  }
+
+  componentDidMount() {
+    // var home = document.getElementById('home');
+    // home.ondragover = function () {
+    //   return false;
+    // };
+    // home.ondragleave = home.ondragend = function () {
+    //   return false;
+    // };
+    // home.ondrop = function (e) {
+    //   e.preventDefault();
+    //   var file = e.dataTransfer.files[0];
+    //   console.log('File you dragged here is', file.path);
+    //   return false;
+    // };
   }
 
   processFile(obj, parentKey = '', masterFormat = []) {
@@ -67,15 +85,37 @@ export default class Home extends Component {
   renderRow(key, rowMode) {
     const anyLocale = Object.keys(this.state.locales)[0];
     const value = this.getValueForKey(this.state.locales[anyLocale].data, key);
-    const shouldShowChevron = !value;
+    const shouldShowCaret = !value;
+    const isBeingEdited = this.state.editingKey === key;
+
     return (
-      <tr>
-        <td>{this.formatKey(key, rowMode, shouldShowChevron)}</td>
+      <tr className={classnames({ 'ln-is-editing': this.state.editingKey === key })}>
+        <td>{this.formatKey(key, rowMode, shouldShowCaret)}</td>
+        <td>
+          {isBeingEdited ?
+            <div className="ls-edit-btns">
+              <button className="btn btn-xs btn-success ln-row-save"
+                onClick={this.saveRow.bind(this, key)}>
+                <i className="fa fa-fw fa-lg fa-check"/>
+              </button>
+              <button className="btn btn-xs btn-danger ln-row-cancel"
+                onClick={this.cancelEditRow.bind(this)}>
+                <i className="fa fa-fw fa-lg fa-times"/>
+              </button>
+            </div>
+            :
+            <button className="btn btn-xs btn-warning ln-row-edit">
+              <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editRow.bind(this, key)}/>
+            </button>
+          }
+        </td>
         {Object.keys(this.state.locales).map((locale) => {
+          const localeObject = this.state.locales[locale];
+          const value = rowMode === 'SHOW' ? this.getValueForKey(localeObject.data, key) : null;
           return (
             <td>
-              {rowMode === 'SHOW' ?
-                this.getValueForKey(this.state.locales[locale].data, key) : null
+              {this.state.editingKey === key && !shouldShowCaret ?
+                <input ref={locale} type="text" className="form-control" defaultValue={value}/> : <span>{value}</span>
               }
             </td>
           );
@@ -87,16 +127,23 @@ export default class Home extends Component {
   formatKey(key, rowMode, shouldShowCaret) {
     let levelKeys = key.split(KEY_DELIMITER);
     let str = '';
+    const keyValue = levelKeys[levelKeys.length - 1];
+    const isBeingEdited = this.state.editingKey === key;
     return (
-      <span onClick={this.toggleKey.bind(this, key)}>
-        {_.map(_.range(levelKeys.length - 1), (i) => {
+      <span>
+        {isBeingEdited ? null : _.map(_.range(levelKeys.length - 1), (i) => {
           return <span key={i}>&nbsp;&nbsp;&nbsp;&nbsp;</span>
         })}
-        {shouldShowCaret ? <i className={classnames('ln-caret fa fa-lg', {
-          'fa-caret-down': rowMode === 'SHOW',
-          'fa-caret-right': rowMode === 'COLLAPSED'
-        })}/> : null}
-        &nbsp;{levelKeys[levelKeys.length - 1]}
+        {shouldShowCaret && !isBeingEdited ?
+          <i className={classnames('ln-caret fa fa-fw fa-lg', {
+            'fa-caret-down': rowMode === 'SHOW',
+            'fa-caret-right': rowMode === 'COLLAPSED'
+            })}
+            onClick={this.toggleKey.bind(this, key)}/> : null
+        }
+        {isBeingEdited ?
+          <input type="text" className="form-control" defaultValue={keyValue}/> : <span> &nbsp;{keyValue}</span>
+        }
       </span>
     );
   }
@@ -110,6 +157,38 @@ export default class Home extends Component {
     }
     this.setState({
       hiddenKeys: hiddenKeys
+    });
+  }
+
+  editRow(key) {
+    this.setState({
+      editingKey: key
+    });
+  }
+
+  saveRow(key) {
+    const locales = this.state.locales;
+    {Object.keys(this.state.locales).map((locale) => {
+      const localeObject = locales[locale];
+
+      let levelKeys = key.split(KEY_DELIMITER);
+      let obj = localeObject.data;
+      for (let i = 0; i < levelKeys.length - 1; i++) {
+        obj = obj[levelKeys[i]];
+      }
+      obj[levelKeys[levelKeys.length - 1]] = this.refs[locale].value;
+
+      ipcRenderer.send('save', localeObject.path, localeObject.data);
+    })};
+    this.setState({
+      locales: locales,
+      editingKey: null
+    });
+  }
+
+  cancelEditRow() {
+    this.setState({
+      editingKey: null
     });
   }
 
@@ -163,12 +242,12 @@ export default class Home extends Component {
 
     this.setState({
       locales: locales
-    }, () => console.log(this.state.locales));
+    });
   }
 
   render() {
     return (
-      <div>
+      <div id="home">
         <div className="container">
           <input type="file" multiple onChange={this.fileChangeHandler.bind(this)}/>
         </div>
@@ -179,6 +258,7 @@ export default class Home extends Component {
           <thead>
             <tr>
               <th>Key</th>
+              <th>Action</th>
               {Object.keys(this.state.locales).map((locale) => {
                 return (
                   <th>{this.state.locales[locale].name}</th>
@@ -188,7 +268,6 @@ export default class Home extends Component {
           </thead>
           {this.renderTableBodyRows()}
         </table>
-
       </div>
     );
   }

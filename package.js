@@ -15,7 +15,6 @@ const appName = argv.name || argv.n || pkg.productName;
 const shouldUseAsar = argv.asar || argv.a || false;
 const shouldBuildAll = argv.all || false;
 
-
 const DEFAULT_OPTS = {
   dir: './',
   name: appName,
@@ -50,7 +49,6 @@ if (version) {
     startPack();
   });
 }
-
 
 function startPack() {
   console.log('start pack...');
@@ -104,7 +102,6 @@ function pack(plat, arch, cb) {
 
   packager(opts, cb);
 }
-
 
 function log(plat, arch) {
   return (err, filepath) => {
