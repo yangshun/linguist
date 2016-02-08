@@ -2,9 +2,8 @@ import React, { Component } from 'react';
 import { Link } from 'react-router';
 import _ from 'lodash';
 import classnames from 'classnames';
+import { localeParse, KEY_DELIMITER } from '../utils/serializer';
 const { ipcRenderer } = require('electron');
-
-const KEY_DELIMITER = ' > ';
 
 export default class Home extends Component {
   constructor(props) {
@@ -12,6 +11,7 @@ export default class Home extends Component {
     this.state = {
       locales: {},
       masterFormat: [],
+      masterStructure: {},
       hiddenKeys: {},
       editingKey: null
     };
@@ -66,17 +66,77 @@ export default class Home extends Component {
     return keyHidden;
   }
 
+  formatTableKeyCol(key, data) {
+    return (
+      <span>
+        {_.map(_.range(data.level - 1), (i) => {
+          return <span key={i}>&nbsp;&nbsp;</span>
+        })}
+        <i className={classnames('ln-caret fa fa-fw fa-lg', {
+          'fa-caret-down': !data.collapse,
+          'fa-caret-right': data.collapse,
+          'invisible': data.type === 'LEAF'
+          })}
+          onClick={this.toggleCollapse.bind(this, data.id)}/>
+        {key}
+      </span>
+    );
+  }
+
+  toggleCollapse(id) {
+    const idFragments = id.split(KEY_DELIMITER);
+    const masterStructure = this.state.masterStructure;
+    let value = masterStructure;
+
+    for (let i = 0; i < idFragments.length - 1; i++) {
+      try {
+        value = value[idFragments[i]].value;
+      } catch (e) {
+        return null;
+      }
+    }
+    value = value[_.last(idFragments)];
+    value.collapse = !value.collapse;
+    this.setState({
+      masterStructure
+    });
+  }
+
   renderTableBodyRows() {
     const tableBodyRows = [];
-    _.each(this.state.masterFormat, ((key) => {
-      const rowMode = this.getRowMode(key);
-      switch (rowMode) {
-        case 'SHOW':
-        case 'COLLAPSED':
-          tableBodyRows.push(this.renderRow(key, rowMode));
-          break;
-      }
-    }));
+    const self = this;
+
+    function renderRow(localeNode) {
+      _.each(_.keys(localeNode), (key) => {
+        const data = localeNode[key];
+        const tableRow = (
+          <tr key={data.id}>
+            <td>
+              {self.formatTableKeyCol(key, data)}
+            </td>
+            {data.type === 'NODE' ?
+              <td colSpan={_.keys(self.state.locales).length}/> :
+              _.keys(self.state.locales).map((locale) => {
+                const name = self.state.locales[locale].name;
+                return (
+                  <td key={name}>
+                    {data.value[name]}
+                  </td>
+                );
+              })
+            }
+          </tr>
+        );
+        tableBodyRows.push(tableRow);
+
+        if (!data.collapse && data.type === 'NODE') {
+          renderRow(data.value);
+        }
+      });
+    }
+
+    renderRow(this.state.masterStructure);
+
     return (
       <tbody>{tableBodyRows}</tbody>
     );
@@ -114,11 +174,11 @@ export default class Home extends Component {
             </div>
           }
         </td>
-        {Object.keys(this.state.locales).map((locale) => {
+        {_.keys(this.state.locales).map((locale) => {
           const localeObject = this.state.locales[locale];
           const value = rowMode === 'SHOW' ? this.getValueForKey(localeObject.data, key) : null;
           return (
-            <td>
+            <td key={localeObject.name}>
               {this.state.editingKey === key && !shouldShowCaret ?
                 <input ref={locale} type="text" className="form-control" defaultValue={value}/> : <span>{value}</span>
               }
@@ -229,9 +289,10 @@ export default class Home extends Component {
 
     Object.keys(files).forEach((key) => {
       const path = files[key].path;
+      const name = files[key].name;
       let localeObject = {
-        name: files[key].name,
-        path: files[key].path,
+        name,
+        path,
         file: files[key],
         data: null
       };
@@ -246,11 +307,12 @@ export default class Home extends Component {
       reader.onloadend = (e) => {
         const fileData = JSON.parse(e.target.result);
         localeObject.data = fileData;
-        var masterFormat = self.processFile(fileData);
-        var combinedMasterFormat = _.union(self.state.masterFormat, masterFormat);
-        combinedMasterFormat.sort();
+
+        const parsedData = localeParse(fileData, name);
+        const combinedMasterStructure = _.merge(self.state.masterStructure, parsedData);
+
         self.setState({
-          masterFormat: combinedMasterFormat
+          masterStructure: combinedMasterStructure
         });
       }
 
@@ -269,16 +331,13 @@ export default class Home extends Component {
           <input type="file" multiple onChange={this.fileChangeHandler.bind(this)}/>
         </div>
         <table className="table table-hover">
-          <colgroup>
-            <col className="locale-key"/>
-          </colgroup>
           <thead>
             <tr>
               <th>Key</th>
-              <th>Action</th>
-              {Object.keys(this.state.locales).map((locale) => {
+              {_.keys(this.state.locales).map((locale) => {
+                const name = this.state.locales[locale].name;
                 return (
-                  <th>{this.state.locales[locale].name}</th>
+                  <th key={name}>{name}</th>
                 );
               })}
             </tr>

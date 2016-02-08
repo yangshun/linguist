@@ -6,3 +6,7 @@ td:first-child {
   font-family: monospace;
 }
 
+.invisible {
+  opacity: 0;
+  pointer-events: none;
+}
