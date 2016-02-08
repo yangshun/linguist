@@ -106,11 +106,11 @@ export default class Home extends Component {
     const tableBodyRows = [];
     const self = this;
 
-    function renderRow(localeNode) {
+    function renderRow(localeNode, collapse) {
       _.each(_.keys(localeNode), (key) => {
         const data = localeNode[key];
         const tableRow = (
-          <tr key={data.id}>
+          <tr key={data.id} className={collapse ? 'hidden' : ''}>
             <td>
               {self.formatTableKeyCol(key, data)}
             </td>
@@ -129,13 +129,13 @@ export default class Home extends Component {
         );
         tableBodyRows.push(tableRow);
 
-        if (!data.collapse && data.type === 'NODE') {
-          renderRow(data.value);
+        if (data.type === 'NODE') {
+          renderRow(data.value, data.collapse || collapse);
         }
       });
     }
 
-    renderRow(this.state.masterStructure);
+    renderRow(this.state.masterStructure, false);
 
     return (
       <tbody>{tableBodyRows}</tbody>
