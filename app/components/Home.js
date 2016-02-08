@@ -251,7 +251,7 @@ export default class Home extends Component {
         <div className="container">
           <input type="file" multiple onChange={this.fileChangeHandler.bind(this)}/>
         </div>
-        <table className="table">
+        <table className="table table-hover">
           <colgroup>
             <col className="locale-key"/>
           </colgroup>
