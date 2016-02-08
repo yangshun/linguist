@@ -7,7 +7,7 @@ const BrowserWindow = electron.BrowserWindow;
 const Menu = electron.Menu;
 const crashReporter = electron.crashReporter;
 const shell = electron.shell;
-const ipcMain = require('electron').ipcMain;
+const ipcMain = electron.ipcMain;
 const fs = require('fs');
 
 let menu;
