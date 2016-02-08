@@ -95,7 +95,7 @@ export default class Home extends Component {
           {isBeingEdited ?
             <div className="ls-edit-btns">
               <button className="btn btn-xs btn-success ln-row-save"
-                onClick={this.saveRow.bind(this, key)}>
+                onClick={this.saveRow.bind(this, key, 'SAVE')}>
                 <i className="fa fa-fw fa-lg fa-check"/>
               </button>
               <button className="btn btn-xs btn-danger ln-row-cancel"
@@ -104,9 +104,14 @@ export default class Home extends Component {
               </button>
             </div>
             :
-            <button className="btn btn-xs btn-warning ln-row-edit">
-              <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editRow.bind(this, key)}/>
-            </button>
+            <div className="ls-edit-btns">
+              <button className="btn btn-xs btn-warning ln-row-edit">
+                <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editRow.bind(this, key)}/>
+              </button>
+              <button className="btn btn-xs btn-danger ln-row-edit">
+                <i className="fa fa-fw fa-lg fa-trash" onClick={this.saveRow.bind(this, key, 'DELETE')}/>
+              </button>
+            </div>
           }
         </td>
         {Object.keys(this.state.locales).map((locale) => {
@@ -166,9 +171,9 @@ export default class Home extends Component {
     });
   }
 
-  saveRow(key) {
+  saveRow(key, type) {
     const locales = this.state.locales;
-    const newKey = this.refs.editingKey.value;
+    const newKey = type === 'SAVE' ? this.refs.editingKey.value : null;
     let data = null;
     {Object.keys(this.state.locales).map((locale) => {
       const localeObject = locales[locale];
@@ -178,8 +183,11 @@ export default class Home extends Component {
       for (let i = 0; i < levelKeys.length - 1; i++) {
         obj = obj[levelKeys[i]];
       }
+      const originalValue = obj[levelKeys[levelKeys.length - 1]];
       delete obj[levelKeys[levelKeys.length - 1]];
-      obj[newKey] = this.refs[locale].value;
+      if (type === 'SAVE') {
+        obj[newKey] = this.refs[locale] ? this.refs[locale].value : originalValue;
+      }
       ipcRenderer.send('save', localeObject.path, localeObject.data);
       data = localeObject.data;
     })};
