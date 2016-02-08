@@ -142,7 +142,7 @@ export default class Home extends Component {
             onClick={this.toggleKey.bind(this, key)}/> : null
         }
         {isBeingEdited ?
-          <input type="text" className="form-control" defaultValue={keyValue}/> : <span> &nbsp;{keyValue}</span>
+          <input ref="editingKey" type="text" className="form-control" defaultValue={keyValue}/> : <span> &nbsp;{keyValue}</span>
         }
       </span>
     );
@@ -168,6 +168,8 @@ export default class Home extends Component {
 
   saveRow(key) {
     const locales = this.state.locales;
+    const newKey = this.refs.editingKey.value;
+    let data = null;
     {Object.keys(this.state.locales).map((locale) => {
       const localeObject = locales[locale];
 
@@ -176,11 +178,18 @@ export default class Home extends Component {
       for (let i = 0; i < levelKeys.length - 1; i++) {
         obj = obj[levelKeys[i]];
       }
-      obj[levelKeys[levelKeys.length - 1]] = this.refs[locale].value;
-
+      delete obj[levelKeys[levelKeys.length - 1]];
+      obj[newKey] = this.refs[locale].value;
       ipcRenderer.send('save', localeObject.path, localeObject.data);
+      data = localeObject.data;
     })};
+
+    const anyKey = Object.keys(this.state.locales)[0];
+    const masterFormat = this.processFile(data);
+    masterFormat.sort();
+
     this.setState({
+      masterFormat: masterFormat,
       locales: locales,
       editingKey: null
     });
