@@ -104,7 +104,9 @@ export default class Home extends Component {
   formatTableKeyCol(key, data) {
     const isBeingEdited = this.state.editingId === data.id;
     return (
-      <span>
+      <td style={{
+        paddingLeft: 24 * (data.meta.level - 1)
+      }}>
         {isBeingEdited ?
           <input ref="editingKey"
             type="text"
@@ -112,9 +114,6 @@ export default class Home extends Component {
             defaultValue={key}/>
           :
           <span>
-            {_.map(_.range(data.meta.level - 1), (i) => {
-              return <span key={i}>&nbsp;&nbsp;</span>
-            })}
             <i className={classnames('ln-caret fa fa-fw fa-lg', {
               'fa-caret-down': !data.meta.collapse,
               'fa-caret-right': data.meta.collapse,
@@ -125,7 +124,7 @@ export default class Home extends Component {
             {data.meta.type === 'NODE' ? ` {${_.keys(data.value).length}}` : null}
           </span>
         }
-      </span>
+      </td>
     );
   }
 
@@ -147,12 +146,12 @@ export default class Home extends Component {
                   </button>
                   <button className="btn btn-xs btn-danger ln-row-cancel"
                     onClick={this.editNode.bind(this, data.id, 'CANCEL')}>
-                    <i className="fa fa-fw fa-lg fa-times"/>
+                    <i className="fa fa-fw fa-lg fa-ban"/>
                   </button>
                 </div>
                 :
                 <div className="ls-edit-btns">
-                  <button className="btn btn-xs btn-warning ln-row-edit">
+                  <button className="btn btn-xs btn-default ln-row-edit">
                     <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editNode.bind(this, data.id, 'EDIT')}/>
                   </button>
                   <button className="btn btn-xs btn-danger ln-row-edit">
@@ -161,9 +160,7 @@ export default class Home extends Component {
                 </div>
               }
             </td>
-            <td>
-              {this.formatTableKeyCol(key, data)}
-            </td>
+            {this.formatTableKeyCol(key, data)}
             {data.meta.type === 'NODE' ?
               <td colSpan={_.keys(this.state.locales).length}/> :
               _.keys(this.state.locales).map((locale) => {
@@ -171,7 +168,7 @@ export default class Home extends Component {
                 return (
                   <td key={name}>
                     {isBeingEdited && !data.meta.collapse ?
-                      <input ref={locale}
+                      <textarea ref={locale}
                         type="text"
                         className="form-control"
                         defaultValue={data.value[name]}/>
