@@ -2,7 +2,11 @@ table .fa {
   cursor: pointer;
 }
 
-td:first-child {
+td:nth-child(2) {
   font-family: monospace;
 }
 
+.invisible {
+  opacity: 0;
+  pointer-events: none;
+}
