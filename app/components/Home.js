@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { Link } from 'react-router';
 import _ from 'lodash';
 import classnames from 'classnames';
-import { localeParse, KEY_DELIMITER } from '../utils/serializer';
+import { localeParse, localeSerializer, KEY_DELIMITER, findNode, findNodeParent, updateNodeKeys } from '../utils/serializer';
 const { ipcRenderer } = require('electron');
 
 export default class Home extends Component {
@@ -13,7 +13,7 @@ export default class Home extends Component {
       masterFormat: [],
       masterStructure: {},
       hiddenKeys: {},
-      editingKey: null
+      editingId: null
     };
   }
 
@@ -67,60 +67,149 @@ export default class Home extends Component {
   }
 
   formatTableKeyCol(key, data) {
+    const isBeingEdited = this.state.editingId === data.id;
     return (
       <span>
-        {_.map(_.range(data.level - 1), (i) => {
-          return <span key={i}>&nbsp;&nbsp;</span>
-        })}
-        <i className={classnames('ln-caret fa fa-fw fa-lg', {
-          'fa-caret-down': !data.collapse,
-          'fa-caret-right': data.collapse,
-          'invisible': data.type === 'LEAF'
-          })}
-          onClick={this.toggleCollapse.bind(this, data.id)}/>
-        {key}
+        {isBeingEdited ?
+          <input ref="editingKey"
+            type="text"
+            className="form-control"
+            defaultValue={key}/>
+          :
+          <span>
+            {_.map(_.range(data.meta.level - 1), (i) => {
+              return <span key={i}>&nbsp;&nbsp;</span>
+            })}
+            <i className={classnames('ln-caret fa fa-fw fa-lg', {
+              'fa-caret-down': !data.meta.collapse,
+              'fa-caret-right': data.meta.collapse,
+              'invisible': data.meta.type === 'LEAF'
+              })}
+              onClick={this.toggleCollapseNode.bind(this, data.id)}/>
+            <strong>{key}</strong>
+            {data.meta.type === 'NODE' ? ` {${_.keys(data.value).length}}` : null}
+          </span>
+        }
       </span>
     );
   }
 
-  toggleCollapse(id) {
-    const idFragments = id.split(KEY_DELIMITER);
+  toggleCollapseNode(id) {
     const masterStructure = this.state.masterStructure;
-    let value = masterStructure;
-
-    for (let i = 0; i < idFragments.length - 1; i++) {
-      try {
-        value = value[idFragments[i]].value;
-      } catch (e) {
-        return null;
-      }
-    }
-    value = value[_.last(idFragments)];
-    value.collapse = !value.collapse;
+    const node = findNode(id, masterStructure);
+    node.meta.collapse = !node.meta.collapse;
     this.setState({
       masterStructure
     });
   }
 
+  editNode(id, action) {
+    this.setState({
+      editingId: action === 'EDIT' ? id : null
+    });
+  }
+
+  removeNode(id) {
+    const masterStructure = this.state.masterStructure;
+    const parentNode = findNodeParent(id, masterStructure);
+    const idFragments = id.split(KEY_DELIMITER);
+    delete parentNode[_.last(idFragments)];
+
+    this.setState({
+      masterStructure,
+      editingId: null
+    }, this.saveToFile);
+  }
+
+  updateNode(id) {
+    const locales = this.state.locales;
+
+    const masterStructure = this.state.masterStructure;
+    const parentNode = findNodeParent(id, masterStructure);
+    const idFragments = id.split(KEY_DELIMITER);
+    const nodeName = _.last(idFragments);
+
+    if (parentNode[nodeName].meta.type === 'LEAF') {
+      {_.keys(this.state.locales).map((locale) => {
+        const localeObject = locales[locale];
+        (parentNode[nodeName].value)[localeObject.name] = this.refs[locale].value;
+      })};
+    }
+
+    const keyName = this.refs.editingKey.value;
+    if (nodeName !== keyName) {
+      // Key has changed
+      parentNode[keyName] = parentNode[nodeName];
+      // TODO: propogate changes in name to id
+      delete parentNode[nodeName];
+      parentNode[keyName] = updateNodeKeys(parentNode[keyName], keyName);
+    }
+
+    this.setState({
+      masterStructure: masterStructure,
+      editingId: null
+    }, this.saveToFile);
+  }
+
+  saveToFile() {
+    const locales = this.state.locales;
+    {_.keys(locales).map((locale) => {
+      const localeObject = locales[locale];
+      const serializedData = localeSerializer(this.state.masterStructure, localeObject.name);
+      console.log(serializedData);
+      ipcRenderer.send('save', localeObject.path, serializedData);
+    })};
+  }
+
   renderTableBodyRows() {
     const tableBodyRows = [];
-    const self = this;
 
-    function renderRow(localeNode, collapse) {
-      _.each(_.keys(localeNode), (key) => {
-        const data = localeNode[key];
+    const renderRow = (nodeValue, collapse) => {
+      _.each(_.keys(nodeValue).sort(), (key) => {
+        const data = nodeValue[key];
+        const isBeingEdited = this.state.editingId === data.id;
         const tableRow = (
           <tr key={data.id} className={collapse ? 'hidden' : ''}>
             <td>
-              {self.formatTableKeyCol(key, data)}
+              {isBeingEdited ?
+                <div className="ls-edit-btns">
+                  <button className="btn btn-xs btn-success ln-row-save"
+                    onClick={this.updateNode.bind(this, data.id)}>
+                    <i className="fa fa-fw fa-lg fa-check"/>
+                  </button>
+                  <button className="btn btn-xs btn-danger ln-row-cancel"
+                    onClick={this.editNode.bind(this, data.id, 'CANCEL')}>
+                    <i className="fa fa-fw fa-lg fa-times"/>
+                  </button>
+                </div>
+                :
+                <div className="ls-edit-btns">
+                  <button className="btn btn-xs btn-warning ln-row-edit">
+                    <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editNode.bind(this, data.id, 'EDIT')}/>
+                  </button>
+                  <button className="btn btn-xs btn-danger ln-row-edit">
+                    <i className="fa fa-fw fa-lg fa-trash" onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
+                  </button>
+                </div>
+              }
             </td>
-            {data.type === 'NODE' ?
-              <td colSpan={_.keys(self.state.locales).length}/> :
-              _.keys(self.state.locales).map((locale) => {
-                const name = self.state.locales[locale].name;
+            <td>
+              {this.formatTableKeyCol(key, data)}
+            </td>
+            {data.meta.type === 'NODE' ?
+              <td colSpan={_.keys(this.state.locales).length}/> :
+              _.keys(this.state.locales).map((locale) => {
+                const name = this.state.locales[locale].name;
                 return (
                   <td key={name}>
-                    {data.value[name]}
+                    {isBeingEdited && !data.meta.collapse ?
+                      <input ref={locale}
+                        type="text"
+                        className="form-control"
+                        defaultValue={data.value[name]}/>
+                      :
+                      data.value[name]
+                    }
                   </td>
                 );
               })
@@ -129,8 +218,8 @@ export default class Home extends Component {
         );
         tableBodyRows.push(tableRow);
 
-        if (data.type === 'NODE') {
-          renderRow(data.value, data.collapse || collapse);
+        if (data.meta.type === 'NODE') {
+          renderRow(data.value, data.meta.collapse || collapse);
         }
       });
     }
@@ -225,12 +314,6 @@ export default class Home extends Component {
     });
   }
 
-  editRow(key) {
-    this.setState({
-      editingKey: key
-    });
-  }
-
   saveRow(key, type) {
     const locales = this.state.locales;
     const newKey = type === 'SAVE' ? this.refs.editingKey.value : null;
@@ -292,9 +375,7 @@ export default class Home extends Component {
       const name = files[key].name;
       let localeObject = {
         name,
-        path,
-        file: files[key],
-        data: null
+        path
       };
 
       if (true || files[key].type === 'application/json') {
@@ -306,7 +387,6 @@ export default class Home extends Component {
       const reader = new FileReader();
       reader.onloadend = (e) => {
         const fileData = JSON.parse(e.target.result);
-        localeObject.data = fileData;
 
         const parsedData = localeParse(fileData, name);
         const combinedMasterStructure = _.merge(self.state.masterStructure, parsedData);
@@ -333,6 +413,7 @@ export default class Home extends Component {
         <table className="table table-hover">
           <thead>
             <tr>
+              <th>Action</th>
               <th>Key</th>
               {_.keys(this.state.locales).map((locale) => {
                 const name = this.state.locales[locale].name;

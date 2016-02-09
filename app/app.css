@@ -2,7 +2,7 @@ table .fa {
   cursor: pointer;
 }
 
-td:first-child {
+td:nth-child(2) {
   font-family: monospace;
 }
 
