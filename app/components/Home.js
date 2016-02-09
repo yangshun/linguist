@@ -2,8 +2,8 @@ import React, { Component } from 'react';
 import { Link } from 'react-router';
 import _ from 'lodash';
 import classnames from 'classnames';
-import { localeParse, localeSerializer, KEY_DELIMITER, findNode,
-  findNodeParent, addNodeKey, updateNodeKeys } from '../utils/serializer';
+import { KEY_DELIMITER, ROOT_KEY, localeParse, localeSerializer, findNode,
+  findNodeParent, createNewNode, updateNodeKeys } from '../utils/serializer';
 const { ipcRenderer } = require('electron');
 
 export default class Home extends Component {
@@ -11,7 +11,15 @@ export default class Home extends Component {
     super(props);
     this.state = {
       locales: {},
-      masterStructure: {},
+      masterStructure: {
+        id: ROOT_KEY,
+        meta: {
+          collapse: false,
+          type: 'NODE',
+          level: 0
+        },
+        value: {}
+      },
       addingId: null,
       editingId: null
     };
@@ -53,7 +61,7 @@ export default class Home extends Component {
     const masterStructure = this.state.masterStructure;
     const parentNode = findNodeParent(id, masterStructure);
     const idFragments = id.split(KEY_DELIMITER);
-    delete parentNode[_.last(idFragments)];
+    delete (parentNode.value)[_.last(idFragments)];
 
     this.setState({
       masterStructure,
@@ -62,46 +70,59 @@ export default class Home extends Component {
     }, this.saveToFile);
   }
 
-  updateNode(id, isBeingAdded) {
+  addNode(id) {
+    const locales = this.state.locales;
+    const masterStructure = this.state.masterStructure;
+    let node = findNode(id, masterStructure);
+    const newKey = this.refs.editingKey.value;
+    const nodeValue = node.value;
+
+    if (nodeValue.hasOwnProperty(newKey) &&
+      !confirm(`The key "${newKey}" already exists. Overwrite existing value?`)) {
+      return;
+    }
+
+    nodeValue[newKey] = createNewNode(node, newKey);
+    {_.keys(this.state.locales).map((locale) => {
+      const localeObject = locales[locale];
+      (nodeValue[newKey].value)[localeObject.name] = this.refs[locale].value;
+    })};
+
+    this.setState({
+      masterStructure: masterStructure,
+      addingId: null,
+      editingId: null
+    }, this.saveToFile);
+  }
+
+  updateNode(id) {
     const locales = this.state.locales;
 
     const masterStructure = this.state.masterStructure;
     let parentNode = findNodeParent(id, masterStructure);
+
     const idFragments = id.split(KEY_DELIMITER);
     const nodeName = _.last(idFragments);
     const newKeyName = this.refs.editingKey.value;
+    const parentNodeValue = parentNode.value;
 
-    if (isBeingAdded) {
-      if (parentNode[nodeName].value.hasOwnProperty(newKeyName) &&
+    if (parentNodeValue[nodeName].meta.type === 'LEAF') {
+      {_.keys(this.state.locales).map((locale) => {
+        const localeObject = locales[locale];
+        (parentNodeValue[nodeName].value)[localeObject.name] = this.refs[locale].value;
+      })};
+    }
+
+    if (nodeName !== newKeyName) {
+      // Key has changed
+      if (parentNodeValue.hasOwnProperty(newKeyName) &&
         !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
         return;
       }
 
-      parentNode[nodeName] = addNodeKey(parentNode[nodeName], newKeyName);
-      const node = parentNode[nodeName].value;
-      {_.keys(this.state.locales).map((locale) => {
-        const localeObject = locales[locale];
-        ((parentNode[nodeName].value)[newKeyName].value)[localeObject.name] = this.refs[locale].value;
-      })};
-    } else {
-      if (parentNode[nodeName].meta.type === 'LEAF') {
-        {_.keys(this.state.locales).map((locale) => {
-          const localeObject = locales[locale];
-          (parentNode[nodeName].value)[localeObject.name] = this.refs[locale].value;
-        })};
-      }
-
-      if (nodeName !== newKeyName) {
-        // Key has changed
-        if (parentNode.hasOwnProperty(newKeyName) &&
-          !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
-          return;
-        }
-
-        parentNode[newKeyName] = parentNode[nodeName];
-        delete parentNode[nodeName];
-        parentNode[newKeyName] = updateNodeKeys(parentNode[newKeyName], newKeyName);
-      }
+      parentNodeValue[newKeyName] = parentNodeValue[nodeName];
+      delete parentNodeValue[nodeName];
+      parentNodeValue[newKeyName] = updateNodeKeys(parentNodeValue[newKeyName], newKeyName);
     }
 
     this.setState({
@@ -154,19 +175,27 @@ export default class Home extends Component {
   }
 
   renderTableRow(key, data, collapse) {
+    const isRootNode = data.id === ROOT_KEY;
     return (
-      <tr key={data.id} className={collapse ? 'hidden' : ''}>
+      <tr key={data.id} className={collapse ? 'hidden' : null}>
         <td>
           <div className="ls-edit-btns">
-            <button className="btn btn-xs btn-default ln-row-edit">
-              <i className="fa fa-fw fa-lg fa-pencil" onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}/>
-            </button>
-            <button className="btn btn-xs btn-danger ln-row-edit">
-              <i className="fa fa-fw fa-lg fa-trash" onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
-            </button>
+            {!isRootNode ?
+              <button className="btn btn-xs btn-default ln-row-edit">
+                <i className="fa fa-fw fa-lg fa-pencil"
+                  onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}/>
+              </button> : null
+            }
+            {!isRootNode ?
+              <button className="btn btn-xs btn-danger ln-row-edit">
+                <i className="fa fa-fw fa-lg fa-trash"
+                  onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
+              </button> : null
+            }
             {data.meta.type === 'NODE' ?
               <button className="btn btn-xs btn-info ln-row-edit">
-                <i className="fa fa-fw fa-lg fa-plus" onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}/>
+                <i className="fa fa-fw fa-lg fa-plus"
+                onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}/>
               </button> : null
             }
           </div>
@@ -193,7 +222,7 @@ export default class Home extends Component {
         <td>
           <div className="ls-edit-btns">
             <button className="btn btn-xs btn-success ln-row-save"
-              onClick={this.updateNode.bind(this, data.id, isBeingAdded)}>
+              onClick={isBeingAdded ? this.addNode.bind(this, data.id) : this.updateNode.bind(this, data.id)}>
               <i className="fa fa-fw fa-lg fa-check"/>
             </button>
             <button className="btn btn-xs btn-danger ln-row-cancel"
@@ -225,39 +254,29 @@ export default class Home extends Component {
   renderTableBody() {
     const tableBodyRows = [];
 
-    const renderRow = (nodeValue, collapse) => {
-      _.each(_.keys(nodeValue).sort(), (key) => {
-        const data = nodeValue[key];
-        const isBeingEdited = data.id === this.state.editingId;
-        const isBeingAdded = data.id === this.state.addingId;
-        const tableRow = isBeingEdited ? this.renderTableRowForm(key, data, collapse) : this.renderTableRow(key, data, collapse);
-        tableBodyRows.push(tableRow);
-        if (isBeingAdded) {
-          const addingForm = this.renderTableRowForm(key, data, false, true);
-          tableBodyRows.push(addingForm);
-        }
+    const renderRow = (key, node, collapse) => {
+      const isBeingEdited = node.id === this.state.editingId;
+      const isBeingAdded = node.id === this.state.addingId;
 
-        if (data.meta.type === 'NODE') {
-          renderRow(data.value, data.meta.collapse || collapse);
-        }
-      });
+      const tableRow = isBeingEdited ? this.renderTableRowForm(key, node, collapse) : this.renderTableRow(key, node, collapse);
+      tableBodyRows.push(tableRow);
+
+      if (isBeingAdded) {
+        const addingForm = this.renderTableRowForm(key, node, false, true);
+        tableBodyRows.push(addingForm);
+      }
+
+      if (node.meta.type === 'NODE') {
+        _.each(_.keys(node.value).sort(), (key) => {
+          renderRow(key, (node.value)[key], node.meta.collapse || collapse);
+        });
+      }
     }
 
-    renderRow(this.state.masterStructure, false);
+    renderRow('Object', this.state.masterStructure, false);
 
     return (
       <tbody>
-        <tr>
-          <td>
-            <button className="btn btn-xs btn-info ln-row-edit">
-              <i className="fa fa-fw fa-lg fa-plus" onClick={this.modifyNodeMode.bind(this, '', 'ADD')}/>
-            </button>
-          </td>
-          <td>
-            <strong>Object</strong> {`{${_.keys(this.state.masterStructure).length}}`}
-          </td>
-          <td colSpan={_.keys(this.state.locales).length}/>
-        </tr>
         {tableBodyRows}
       </tbody>
     );
