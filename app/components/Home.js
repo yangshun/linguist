@@ -57,6 +57,19 @@ export default class Home extends Component {
     });
   }
 
+  modifyNodeType(id, type) {
+    const masterStructure = this.state.masterStructure;
+    const node = findNode(id, masterStructure);
+    node.meta.type = type;
+    node.value = {};
+
+    this.setState({
+      masterStructure,
+      addingId: type === 'NODE' ? id : null,
+      editingId: type === 'LEAF' ? id : null,
+    }, this.saveToFile);
+  }
+
   removeNode(id) {
     const masterStructure = this.state.masterStructure;
     const parentNode = findNodeParent(id, masterStructure);
@@ -189,21 +202,33 @@ export default class Home extends Component {
         <td>
           <div className="ls-edit-btns">
             {!isRootNode ?
-              <button className="btn btn-xs btn-default ln-row-edit">
-                <i className="fa fa-fw fa-lg fa-pencil"
-                  onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}/>
+              <button className="btn btn-xs btn-default ln-row-edit"
+                onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}>
+                <i className="fa fa-fw fa-lg fa-pencil"/>
               </button> : null
             }
             {!isRootNode ?
-              <button className="btn btn-xs btn-danger ln-row-edit">
-                <i className="fa fa-fw fa-lg fa-trash"
-                  onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
+              <button className="btn btn-xs btn-danger ln-row-edit"
+                onClick={this.removeNode.bind(this, data.id, 'DELETE')}>
+                <i className="fa fa-fw fa-lg fa-trash"/>
               </button> : null
             }
             {data.meta.type === 'NODE' ?
-              <button className="btn btn-xs btn-info ln-row-edit">
-                <i className="fa fa-fw fa-lg fa-plus"
-                onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}/>
+              <button className="btn btn-xs btn-info ln-row-edit"
+                onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}>
+                <i className="fa fa-fw fa-lg fa-plus"/>
+              </button> : null
+            }
+            {!isRootNode && data.meta.type === 'NODE' ?
+              <button className="btn btn-xs btn-warning ln-row-edit"
+                onClick={this.modifyNodeType.bind(this, data.id, 'LEAF')}>
+                {'""'}
+              </button> : null
+            }
+            {!isRootNode && data.meta.type === 'LEAF' ?
+              <button className="btn btn-xs btn-warning ln-row-edit"
+                onClick={this.modifyNodeType.bind(this, data.id, 'NODE')}>
+                {'{}'}
               </button> : null
             }
           </div>
