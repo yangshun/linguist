@@ -73,12 +73,17 @@ export default class Home extends Component {
       })};
     }
 
-    const keyName = this.refs.editingKey.value;
-    if (nodeName !== keyName) {
+    const newKeyName = this.refs.editingKey.value;
+    if (nodeName !== newKeyName) {
       // Key has changed
-      parentNode[keyName] = parentNode[nodeName];
+      if (parentNode.hasOwnProperty(newKeyName) &&
+        !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
+        return;
+      }
+
+      parentNode[newKeyName] = parentNode[nodeName];
       delete parentNode[nodeName];
-      parentNode[keyName] = updateNodeKeys(parentNode[keyName], keyName);
+      parentNode[newKeyName] = updateNodeKeys(parentNode[newKeyName], newKeyName);
     }
 
     this.setState({
