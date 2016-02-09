@@ -143,16 +143,22 @@ export default class Home extends Component {
 
   formatTableKeyCol(key, data, isBeingAdded) {
     const isBeingEdited = this.state.editingId === data.id;
-    let offset = -1;
-    if (isBeingAdded) {
-      offset = 1;
-    } else if (isBeingEdited) {
-      offset = 0;
-    }
-    return (
-      <td style={{
+    const isRootNode = data.id === ROOT_KEY;
+    let tableCellStyle = null;
+    if (!isRootNode) {
+      let offset = -1;
+      if (isBeingAdded) {
+        offset = 1;
+      } else if (isBeingEdited) {
+        offset = 0;
+      }
+      tableCellStyle = {
         paddingLeft: 24 * (data.meta.level + offset)
-      }}>
+      };
+    }
+
+    return (
+      <td style={tableCellStyle}>
         {isBeingEdited || isBeingAdded ?
           <input ref="editingKey"
             type="text"
@@ -160,12 +166,14 @@ export default class Home extends Component {
             defaultValue={isBeingAdded ? null : key}/>
           :
           <span>
-            <i className={classnames('ln-caret fa fa-fw fa-lg', {
-              'fa-caret-down': !data.meta.collapse,
-              'fa-caret-right': data.meta.collapse,
-              'invisible': data.meta.type === 'LEAF'
-              })}
-              onClick={this.toggleCollapseNode.bind(this, data.id)}/>
+            {isRootNode ? null :
+              <i className={classnames('ln-caret fa fa-fw fa-lg', {
+                'fa-caret-down': !data.meta.collapse,
+                'fa-caret-right': data.meta.collapse,
+                'invisible': data.meta.type === 'LEAF'
+                })}
+                onClick={this.toggleCollapseNode.bind(this, data.id)}/>
+            }
             <strong>{key}</strong>
             {data.meta.type === 'NODE' ? ` {${_.keys(data.value).length}}` : null}
           </span>
