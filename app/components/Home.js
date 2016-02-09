@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 import { Link } from 'react-router';
 import _ from 'lodash';
 import classnames from 'classnames';
-import { localeParse, localeSerializer, KEY_DELIMITER, findNode, findNodeParent, updateNodeKeys } from '../utils/serializer';
+import { localeParse, localeSerializer, KEY_DELIMITER, findNode,
+  findNodeParent, addNodeKey, updateNodeKeys } from '../utils/serializer';
 const { ipcRenderer } = require('electron');
 
 export default class Home extends Component {
@@ -11,6 +12,7 @@ export default class Home extends Component {
     this.state = {
       locales: {},
       masterStructure: {},
+      addingId: null,
       editingId: null
     };
   }
@@ -40,9 +42,10 @@ export default class Home extends Component {
     });
   }
 
-  editNode(id, action) {
+  modifyNodeMode(id, action) {
     this.setState({
-      editingId: action === 'EDIT' ? id : null
+      addingId: action === 'ADD' ? id : null,
+      editingId: action === 'EDIT' ? id : null,
     });
   }
 
@@ -54,40 +57,56 @@ export default class Home extends Component {
 
     this.setState({
       masterStructure,
+      addingId: null,
       editingId: null
     }, this.saveToFile);
   }
 
-  updateNode(id) {
+  updateNode(id, isBeingAdded) {
     const locales = this.state.locales;
 
     const masterStructure = this.state.masterStructure;
-    const parentNode = findNodeParent(id, masterStructure);
+    let parentNode = findNodeParent(id, masterStructure);
     const idFragments = id.split(KEY_DELIMITER);
     const nodeName = _.last(idFragments);
-
-    if (parentNode[nodeName].meta.type === 'LEAF') {
-      {_.keys(this.state.locales).map((locale) => {
-        const localeObject = locales[locale];
-        (parentNode[nodeName].value)[localeObject.name] = this.refs[locale].value;
-      })};
-    }
-
     const newKeyName = this.refs.editingKey.value;
-    if (nodeName !== newKeyName) {
-      // Key has changed
-      if (parentNode.hasOwnProperty(newKeyName) &&
+
+    if (isBeingAdded) {
+      if (parentNode[nodeName].value.hasOwnProperty(newKeyName) &&
         !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
         return;
       }
 
-      parentNode[newKeyName] = parentNode[nodeName];
-      delete parentNode[nodeName];
-      parentNode[newKeyName] = updateNodeKeys(parentNode[newKeyName], newKeyName);
+      parentNode[nodeName] = addNodeKey(parentNode[nodeName], newKeyName);
+      const node = parentNode[nodeName].value;
+      {_.keys(this.state.locales).map((locale) => {
+        const localeObject = locales[locale];
+        ((parentNode[nodeName].value)[newKeyName].value)[localeObject.name] = this.refs[locale].value;
+      })};
+    } else {
+      if (parentNode[nodeName].meta.type === 'LEAF') {
+        {_.keys(this.state.locales).map((locale) => {
+          const localeObject = locales[locale];
+          (parentNode[nodeName].value)[localeObject.name] = this.refs[locale].value;
+        })};
+      }
+
+      if (nodeName !== newKeyName) {
+        // Key has changed
+        if (parentNode.hasOwnProperty(newKeyName) &&
+          !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
+          return;
+        }
+
+        parentNode[newKeyName] = parentNode[nodeName];
+        delete parentNode[nodeName];
+        parentNode[newKeyName] = updateNodeKeys(parentNode[newKeyName], newKeyName);
+      }
     }
 
     this.setState({
       masterStructure: masterStructure,
+      addingId: null,
       editingId: null
     }, this.saveToFile);
   }
@@ -101,17 +120,23 @@ export default class Home extends Component {
     })};
   }
 
-  formatTableKeyCol(key, data) {
+  formatTableKeyCol(key, data, isBeingAdded) {
     const isBeingEdited = this.state.editingId === data.id;
+    let offset = -1;
+    if (isBeingAdded) {
+      offset = 1;
+    } else if (isBeingEdited) {
+      offset = 0;
+    }
     return (
       <td style={{
-        paddingLeft: 24 * (data.meta.level - 1)
+        paddingLeft: 24 * (data.meta.level + offset)
       }}>
-        {isBeingEdited ?
+        {isBeingEdited || isBeingAdded ?
           <input ref="editingKey"
             type="text"
             className="form-control"
-            defaultValue={key}/>
+            defaultValue={isBeingAdded ? null : key}/>
           :
           <span>
             <i className={classnames('ln-caret fa fa-fw fa-lg', {
@@ -128,60 +153,89 @@ export default class Home extends Component {
     );
   }
 
-  renderTableBodyRows() {
+  renderTableRow(key, data, collapse) {
+    return (
+      <tr key={data.id} className={collapse ? 'hidden' : ''}>
+        <td>
+          <div className="ls-edit-btns">
+            <button className="btn btn-xs btn-default ln-row-edit">
+              <i className="fa fa-fw fa-lg fa-pencil" onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}/>
+            </button>
+            <button className="btn btn-xs btn-danger ln-row-edit">
+              <i className="fa fa-fw fa-lg fa-trash" onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
+            </button>
+            {data.meta.type === 'NODE' ?
+              <button className="btn btn-xs btn-info ln-row-edit">
+                <i className="fa fa-fw fa-lg fa-plus" onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}/>
+              </button> : null
+            }
+          </div>
+        </td>
+        {this.formatTableKeyCol(key, data)}
+        {data.meta.type === 'NODE' ?
+          <td colSpan={_.keys(this.state.locales).length}/> :
+          _.keys(this.state.locales).map((locale) => {
+            const name = this.state.locales[locale].name;
+            return (
+              <td key={name}>
+                {data.value[name]}
+              </td>
+            );
+          })
+        }
+      </tr>
+    );
+  }
+
+  renderTableRowForm(key, data, collapse, isBeingAdded) {
+    return (
+      <tr key={data.id + 'add'} className={collapse ? 'hidden' : ''}>
+        <td>
+          <div className="ls-edit-btns">
+            <button className="btn btn-xs btn-success ln-row-save"
+              onClick={this.updateNode.bind(this, data.id, isBeingAdded)}>
+              <i className="fa fa-fw fa-lg fa-check"/>
+            </button>
+            <button className="btn btn-xs btn-danger ln-row-cancel"
+              onClick={this.modifyNodeMode.bind(this, data.id, 'CANCEL')}>
+              <i className="fa fa-fw fa-lg fa-ban"/>
+            </button>
+          </div>
+        </td>
+        {this.formatTableKeyCol(key, data, isBeingAdded)}
+        {data.meta.type === 'LEAF' || isBeingAdded ?
+          _.keys(this.state.locales).map((locale) => {
+            const name = this.state.locales[locale].name;
+            return (
+              <td key={name}>
+                <textarea ref={locale}
+                  type="text"
+                  className="form-control"
+                  defaultValue={isBeingAdded ? null : data.value[name]}/>
+              </td>
+            );
+          })
+          :
+          <td colSpan={_.keys(this.state.locales).length}/>
+        }
+      </tr>
+    );
+  }
+
+  renderTableBody() {
     const tableBodyRows = [];
 
     const renderRow = (nodeValue, collapse) => {
       _.each(_.keys(nodeValue).sort(), (key) => {
         const data = nodeValue[key];
-        const isBeingEdited = this.state.editingId === data.id;
-        const tableRow = (
-          <tr key={data.id} className={collapse ? 'hidden' : ''}>
-            <td>
-              {isBeingEdited ?
-                <div className="ls-edit-btns">
-                  <button className="btn btn-xs btn-success ln-row-save"
-                    onClick={this.updateNode.bind(this, data.id)}>
-                    <i className="fa fa-fw fa-lg fa-check"/>
-                  </button>
-                  <button className="btn btn-xs btn-danger ln-row-cancel"
-                    onClick={this.editNode.bind(this, data.id, 'CANCEL')}>
-                    <i className="fa fa-fw fa-lg fa-ban"/>
-                  </button>
-                </div>
-                :
-                <div className="ls-edit-btns">
-                  <button className="btn btn-xs btn-default ln-row-edit">
-                    <i className="fa fa-fw fa-lg fa-pencil" onClick={this.editNode.bind(this, data.id, 'EDIT')}/>
-                  </button>
-                  <button className="btn btn-xs btn-danger ln-row-edit">
-                    <i className="fa fa-fw fa-lg fa-trash" onClick={this.removeNode.bind(this, data.id, 'DELETE')}/>
-                  </button>
-                </div>
-              }
-            </td>
-            {this.formatTableKeyCol(key, data)}
-            {data.meta.type === 'NODE' ?
-              <td colSpan={_.keys(this.state.locales).length}/> :
-              _.keys(this.state.locales).map((locale) => {
-                const name = this.state.locales[locale].name;
-                return (
-                  <td key={name}>
-                    {isBeingEdited && !data.meta.collapse ?
-                      <textarea ref={locale}
-                        type="text"
-                        className="form-control"
-                        defaultValue={data.value[name]}/>
-                      :
-                      data.value[name]
-                    }
-                  </td>
-                );
-              })
-            }
-          </tr>
-        );
+        const isBeingEdited = data.id === this.state.editingId;
+        const isBeingAdded = data.id === this.state.addingId;
+        const tableRow = isBeingEdited ? this.renderTableRowForm(key, data, collapse) : this.renderTableRow(key, data, collapse);
         tableBodyRows.push(tableRow);
+        if (isBeingAdded) {
+          const addingForm = this.renderTableRowForm(key, data, false, true);
+          tableBodyRows.push(addingForm);
+        }
 
         if (data.meta.type === 'NODE') {
           renderRow(data.value, data.meta.collapse || collapse);
@@ -192,7 +246,20 @@ export default class Home extends Component {
     renderRow(this.state.masterStructure, false);
 
     return (
-      <tbody>{tableBodyRows}</tbody>
+      <tbody>
+        <tr>
+          <td>
+            <button className="btn btn-xs btn-info ln-row-edit">
+              <i className="fa fa-fw fa-lg fa-plus" onClick={this.modifyNodeMode.bind(this, '', 'ADD')}/>
+            </button>
+          </td>
+          <td>
+            <strong>Object</strong> {`{${_.keys(this.state.masterStructure).length}}`}
+          </td>
+          <td colSpan={_.keys(this.state.locales).length}/>
+        </tr>
+        {tableBodyRows}
+      </tbody>
     );
   }
 
@@ -254,7 +321,7 @@ export default class Home extends Component {
               })}
             </tr>
           </thead>
-          {this.renderTableBodyRows()}
+          {this.renderTableBody()}
         </table>
       </div>
     );
