@@ -90,6 +90,11 @@ export default class Home extends Component {
     const newKey = this.refs.editingKey.value;
     const nodeValue = node.value;
 
+    if (_.trim(newKey) === '') {
+      alert('Empty keys are not allowed.');
+      return;
+    }
+
     if (nodeValue.hasOwnProperty(newKey) &&
       !confirm(`The key "${newKey}" already exists. Overwrite existing value?`)) {
       return;
@@ -115,27 +120,32 @@ export default class Home extends Component {
     let parentNode = findNodeParent(id, masterStructure);
 
     const idFragments = id.split(KEY_DELIMITER);
-    const nodeName = _.last(idFragments);
-    const newKeyName = this.refs.editingKey.value;
+    const nodeKey = _.last(idFragments);
+    const newKey = this.refs.editingKey.value;
     const parentNodeValue = parentNode.value;
 
-    if (parentNodeValue[nodeName].meta.type === 'LEAF') {
+    if (_.trim(newKey) === '') {
+      alert('Empty keys are not allowed.');
+      return;
+    }
+
+    if (parentNodeValue[nodeKey].meta.type === 'LEAF') {
       {_.keys(this.state.locales).map((locale) => {
         const localeObject = locales[locale];
-        (parentNodeValue[nodeName].value)[localeObject.name] = this.refs[locale].value;
+        (parentNodeValue[nodeKey].value)[localeObject.name] = this.refs[locale].value;
       })};
     }
 
-    if (nodeName !== newKeyName) {
+    if (nodeKey !== newKey) {
       // Key has changed
-      if (parentNodeValue.hasOwnProperty(newKeyName) &&
-        !confirm(`The key "${newKeyName}" already exists. Overwrite existing value?`)) {
+      if (parentNodeValue.hasOwnProperty(newKey) &&
+        !confirm(`The key "${newKey}" already exists. Overwrite existing value?`)) {
         return;
       }
 
-      parentNodeValue[newKeyName] = parentNodeValue[nodeName];
-      delete parentNodeValue[nodeName];
-      parentNodeValue[newKeyName] = updateNodeKeys(parentNodeValue[newKeyName], newKeyName);
+      parentNodeValue[newKey] = parentNodeValue[nodeKey];
+      delete parentNodeValue[nodeKey];
+      parentNodeValue[newKey] = updateNodeKeys(parentNodeValue[newKey], newKey);
     }
 
     this.setState({
