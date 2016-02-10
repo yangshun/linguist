@@ -57,7 +57,8 @@ export function _localeSerializer(nodeValue, localeName) {
 
   _.each(_.keys(nodeValue), (key) => {
     if (nodeValue[key].meta.type === 'LEAF') {
-      localeData[key] = (nodeValue[key].value)[localeName];
+      localeData[key] = (nodeValue[key].value)[localeName] !== undefined ?
+        (nodeValue[key].value)[localeName] : '';
     } else {
       localeData[key] = _localeSerializer(nodeValue[key].value, localeName);
     }
