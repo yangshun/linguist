@@ -17,6 +17,10 @@ table .fa {
   background-color: #1f292f;
 }
 
+.table-hover > tbody > tr.match {
+  background-color: #314549;
+}
+
 td:nth-child(1),
 td:nth-child(2) {
   font-family: monospace;

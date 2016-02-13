@@ -28,7 +28,8 @@ export default class Home extends Component {
         value: {}
       },
       addingId: null,
-      editingId: null
+      editingId: null,
+      filterText: ''
     };
   }
 
@@ -221,6 +222,19 @@ export default class Home extends Component {
     });
   }
 
+  keyMatchesFilter(key) {
+    const MINIMUM_MATCHING_LENGTH = 2;
+    if (this.state.filterText.length < MINIMUM_MATCHING_LENGTH) {
+      return false;
+    }
+
+    if (key.indexOf(this.state.filterText) > -1) {
+      return true;
+    }
+
+    return false;
+  }
+
   formatTableKeyCol(key, data, isBeingAdded) {
     const isBeingEdited = this.state.editingId === data.id;
     const isRootNode = data.id === ROOT_KEY;
@@ -265,7 +279,10 @@ export default class Home extends Component {
   renderTableRow(key, data, collapse) {
     const isRootNode = data.id === ROOT_KEY;
     return (
-      <tr key={data.id} className={collapse ? 'hidden' : null}>
+      <tr key={data.id} className={classnames({
+        hidden: collapse,
+        match: this.keyMatchesFilter(key)
+      })}>
         <td>
           <div className="btn-group ls-edit-btns" role="group">
             {!isRootNode ?
@@ -473,7 +490,16 @@ export default class Home extends Component {
               </form>
               <form className="navbar-form navbar-right" role="search">
                 <div className="form-group">
-                  <input type="text" className="form-control" placeholder="Search"/>
+                  <input type="text"
+                    className="form-control"
+                    placeholder="Search"
+                    value={this.state.filterText}
+                    onChange={(e) => {
+                      this.setState({
+                        filterText: e.target.value
+                      });
+                    }}
+                    />
                 </div>
                 <button type="submit" className="btn btn-default">Search</button>
               </form>
