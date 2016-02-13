@@ -15,7 +15,7 @@ function _localeParse(localeData, localeName, level, parentId) {
       parsedData[key] = {
         id,
         meta: {
-          collapse: false,
+          collapse: true,
           type: 'NODE',
           level,
         },

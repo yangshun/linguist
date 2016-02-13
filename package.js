@@ -26,7 +26,7 @@ const DEFAULT_OPTS = {
   ].concat(devDeps.map(name => `/node_modules/${name}($|/)`))
 };
 
-const icon = argv.icon || argv.i || 'app/app';
+const icon = argv.icon || argv.i || 'iconset/app';
 
 if (icon) {
   DEFAULT_OPTS.icon = icon;
