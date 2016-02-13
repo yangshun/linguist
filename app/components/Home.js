@@ -478,7 +478,7 @@ export default class Home extends Component {
                   </a>
                 </li>
               </ul>
-              <form className="navbar-form navbar-left" role="search">
+              <div className="navbar-form navbar-left" role="search">
                 <div className="form-group">
                   <input className="form-control"
                     ref="yandexAPIKey"
@@ -487,8 +487,8 @@ export default class Home extends Component {
                     value={this.state.yandexAPIKey}
                     onChange={this.updateYandexAPIKey.bind(this)}/>
                 </div>
-              </form>
-              <form className="navbar-form navbar-right" role="search">
+              </div>
+              <div className="navbar-form navbar-right" role="search">
                 <div className="form-group">
                   <input type="text"
                     className="form-control"
@@ -502,7 +502,7 @@ export default class Home extends Component {
                     />
                 </div>
                 <button type="submit" className="btn btn-default">Search</button>
-              </form>
+              </div>
             </div>
           </div>
         </nav>
