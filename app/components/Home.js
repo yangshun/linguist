@@ -10,6 +10,7 @@ export default class Home extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      yandexAPIKey: localStorage.yandexAPIKey || null,
       locales: {},
       masterStructure: {
         id: ROOT_KEY,
@@ -39,6 +40,14 @@ export default class Home extends Component {
     //   console.log('File you dragged here is', file.path);
     //   return false;
     // };
+  }
+
+  updateYandexAPIKey(event) {
+    const yandexAPIKey = event.target.value;
+    localStorage.yandexAPIKey = yandexAPIKey;
+    this.setState({
+      yandexAPIKey: yandexAPIKey
+    });
   }
 
   toggleCollapseNode(id) {
@@ -210,7 +219,7 @@ export default class Home extends Component {
     return (
       <tr key={data.id} className={collapse ? 'hidden' : null}>
         <td>
-          <div className="ls-edit-btns">
+          <div className="btn-group ls-edit-btns" role="group">
             {!isRootNode ?
               <button className="btn btn-xs btn-default ln-row-edit"
                 onClick={this.modifyNodeMode.bind(this, data.id, 'EDIT')}>
@@ -218,27 +227,27 @@ export default class Home extends Component {
               </button> : null
             }
             {!isRootNode ?
-              <button className="btn btn-xs btn-danger ln-row-edit"
+              <button className="btn btn-xs btn-default ln-row-edit"
                 onClick={this.removeNode.bind(this, data.id, 'DELETE')}>
                 <i className="fa fa-fw fa-lg fa-trash"/>
               </button> : null
             }
-            {data.meta.type === 'NODE' ?
-              <button className="btn btn-xs btn-info ln-row-edit"
-                onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}>
-                <i className="fa fa-fw fa-lg fa-plus"/>
-              </button> : null
-            }
             {!isRootNode && data.meta.type === 'NODE' ?
-              <button className="btn btn-xs btn-warning ln-row-edit"
+              <button className="btn btn-xs btn-default ln-row-edit"
                 onClick={this.modifyNodeType.bind(this, data.id, 'LEAF')}>
-                {'""'}
+                {'" "'}
               </button> : null
             }
             {!isRootNode && data.meta.type === 'LEAF' ?
-              <button className="btn btn-xs btn-warning ln-row-edit"
+              <button className="btn btn-xs btn-default ln-row-edit"
                 onClick={this.modifyNodeType.bind(this, data.id, 'NODE')}>
-                {'{}'}
+                {'{ }'}
+              </button> : null
+            }
+            {data.meta.type === 'NODE' ?
+              <button className="btn btn-xs btn-default ln-row-edit"
+                onClick={this.modifyNodeMode.bind(this, data.id, 'ADD')}>
+                <i className="fa fa-fw fa-lg fa-plus"/>
               </button> : null
             }
           </div>
@@ -263,7 +272,7 @@ export default class Home extends Component {
     return (
       <tr key={data.id + 'add'} className={collapse ? 'hidden' : ''}>
         <td>
-          <div className="ls-edit-btns">
+          <div className="btn-group ls-edit-btns" role="group">
             <button className="btn btn-xs btn-success ln-row-save"
               onClick={isBeingAdded ? this.addNode.bind(this, data.id) : this.updateNode.bind(this, data.id)}>
               <i className="fa fa-fw fa-lg fa-check"/>
@@ -367,9 +376,54 @@ export default class Home extends Component {
   render() {
     return (
       <div id="home">
-        <div className="container">
-          <input type="file" multiple onChange={this.fileChangeHandler.bind(this)}/>
-        </div>
+        <nav className="navbar navbar-inverse">
+          <div className="container-fluid">
+            <div className="navbar-header">
+              <button type="button" className="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
+                <span className="sr-only">Toggle navigation</span>
+                <span className="icon-bar"></span>
+                <span className="icon-bar"></span>
+                <span className="icon-bar"></span>
+              </button>
+              <a className="navbar-brand" href="#">Linguist</a>
+            </div>
+
+            <div className="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+              <ul className="nav navbar-nav">
+                <li>
+                  <a className="load-file-input-container">
+                    <input className="load-file-input"
+                      ref="loadFileInput"
+                      type="file"
+                      multiple
+                      onChange={this.fileChangeHandler.bind(this)}/>
+                    <button className="btn btn-warning" onClick={() => {
+                      this.refs.loadFileInput.click();
+                    }}>
+                      Open
+                    </button>
+                  </a>
+                </li>
+              </ul>
+              <form className="navbar-form navbar-left" role="search">
+                <div className="form-group">
+                  <input className="form-control"
+                    ref="yandexAPIKey"
+                    type="text"
+                    placeholder="Yandex API Key"
+                    value={this.state.yandexAPIKey}
+                    onChange={this.updateYandexAPIKey.bind(this)}/>
+                </div>
+              </form>
+              <form className="navbar-form navbar-right" role="search">
+                <div className="form-group">
+                  <input type="text" className="form-control" placeholder="Search"/>
+                </div>
+                <button type="submit" className="btn btn-default">Search</button>
+              </form>
+            </div>
+          </div>
+        </nav>
         <table className="table table-hover">
           <thead>
             <tr>
@@ -378,7 +432,7 @@ export default class Home extends Component {
               {_.keys(this.state.locales).map((locale) => {
                 const name = this.state.locales[locale].name;
                 return (
-                  <th key={name}>{name}</th>
+                  <th className="locale-column" key={name}>{name}</th>
                 );
               })}
             </tr>

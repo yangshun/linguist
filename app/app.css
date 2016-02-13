@@ -12,3 +12,25 @@ td:nth-child(2) {
   opacity: 0;
   pointer-events: none;
 }
+
+th:first-child {
+  min-width: 150px;
+}
+
+.navbar-nav > li > a.load-file-input-container {
+  padding-top: 7px;
+  padding-bottom: 6px;
+}
+
+.load-file-input {
+  position: absolute;
+  top: -9999px;
+  opacity: 0;
+  -moz-opacity: 0;
+  filter: alpha(opacity=0);
+  width: 100%;
+}
+
+.locale-column {
+  min-width: 100%;
+}
