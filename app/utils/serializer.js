@@ -3,7 +3,7 @@ import _ from 'lodash';
 export const KEY_DELIMITER = '.';
 export const ROOT_KEY = 'ROOT_KEY';
 
-function _localeParse(localeData, localeName, level, parentId) {
+function _localeParse(localeData, lang, level, parentId) {
   const parsedData = {};
 
   let keys = Object.keys(localeData);
@@ -15,11 +15,11 @@ function _localeParse(localeData, localeName, level, parentId) {
       parsedData[key] = {
         id,
         meta: {
-          collapse: true,
+          collapse: false,
           type: 'NODE',
           level,
         },
-        value: _localeParse(localeData[key], localeName, level + 1, id)
+        value: _localeParse(localeData[key], lang, level + 1, id)
       };
     } else {
       parsedData[key] = {
@@ -29,7 +29,7 @@ function _localeParse(localeData, localeName, level, parentId) {
           level,
         },
         value: {
-          [localeName]: data
+          [lang]: data
         }
       };
     }
@@ -38,7 +38,7 @@ function _localeParse(localeData, localeName, level, parentId) {
   return parsedData;
 }
 
-export function localeParse(localeData, localeName) {
+export function localeParse(localeData, lang) {
   const ROOT_ID = ROOT_KEY;
   const ROOT_LEVEL = 0;
   return {
@@ -48,27 +48,27 @@ export function localeParse(localeData, localeName) {
       type: 'NODE',
       level: 0
     },
-    value: _localeParse(localeData, localeName, ROOT_LEVEL + 1, ROOT_ID)
+    value: _localeParse(localeData, lang, ROOT_LEVEL + 1, ROOT_ID)
   };
 }
 
-export function _localeSerializer(nodeValue, localeName) {
+export function _localeSerializer(nodeValue, lang) {
   const localeData = {};
 
   _.each(_.keys(nodeValue), (key) => {
     if (nodeValue[key].meta.type === 'LEAF') {
-      localeData[key] = (nodeValue[key].value)[localeName] !== undefined ?
-        (nodeValue[key].value)[localeName] : '';
+      localeData[key] = (nodeValue[key].value)[lang] !== undefined ?
+        (nodeValue[key].value)[lang] : '';
     } else {
-      localeData[key] = _localeSerializer(nodeValue[key].value, localeName);
+      localeData[key] = _localeSerializer(nodeValue[key].value, lang);
     }
   });
 
   return localeData;
 }
 
-export function localeSerializer(node, localeName) {
-  return _localeSerializer(node.value, localeName);
+export function localeSerializer(node, lang) {
+  return _localeSerializer(node.value, lang);
 }
 
 function nodeTraversal(idFragments, masterStructure) {

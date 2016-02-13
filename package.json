@@ -87,11 +87,13 @@
     "webpack-target-electron-renderer": "^0.3.0"
   },
   "dependencies": {
+    "axios": "^0.9.1",
     "bootstrap-sass": "^3.3.6",
     "classnames": "^2.2.3",
     "electron-debug": "^0.5.1",
     "font-awesome": "^4.4.0",
     "history": "^1.17.0",
+    "json-loader": "^0.5.4",
     "lodash": "^4.2.1",
     "react": "^0.14.2",
     "react-dom": "^0.14.2",

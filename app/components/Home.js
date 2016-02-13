@@ -1,10 +1,16 @@
-import React, { Component } from 'react';
-import { Link } from 'react-router';
 import _ from 'lodash';
+import axios from 'axios';
+
+import React, { Component } from 'react';
 import classnames from 'classnames';
+
+const { ipcRenderer } = require('electron');
+
 import { KEY_DELIMITER, ROOT_KEY, localeParse, localeSerializer, findNode,
   findNodeParent, createNewNode, updateNodeKeys } from '../utils/serializer';
-const { ipcRenderer } = require('electron');
+const langs = require('../utils/langs.json');
+
+const YANDEX_TRANSLATE_API = 'https://translate.yandex.net/api/v1.5/tr.json/translate';
 
 export default class Home extends Component {
   constructor(props) {
@@ -80,6 +86,10 @@ export default class Home extends Component {
   }
 
   removeNode(id) {
+    if (!window.confirm('Confirm removal?')) {
+      return;
+    }
+
     const masterStructure = this.state.masterStructure;
     const parentNode = findNodeParent(id, masterStructure);
     const idFragments = id.split(KEY_DELIMITER);
@@ -110,10 +120,10 @@ export default class Home extends Component {
     }
 
     nodeValue[newKey] = createNewNode(node, newKey);
-    {_.keys(this.state.locales).map((locale) => {
-      const localeObject = locales[locale];
-      (nodeValue[newKey].value)[localeObject.name] = this.refs[locale].value;
-    })};
+    _.keys(this.state.locales).map((locale) => {
+      const lang = locales[locale].lang;
+      (nodeValue[newKey].value)[lang] = this.refs[lang].value;
+    });
 
     this.setState({
       masterStructure: masterStructure,
@@ -139,10 +149,10 @@ export default class Home extends Component {
     }
 
     if (parentNodeValue[nodeKey].meta.type === 'LEAF') {
-      {_.keys(this.state.locales).map((locale) => {
-        const localeObject = locales[locale];
-        (parentNodeValue[nodeKey].value)[localeObject.name] = this.refs[locale].value;
-      })};
+      _.keys(this.state.locales).map((locale) => {
+        const lang = locales[locale].lang;
+        (parentNodeValue[nodeKey].value)[lang] = this.refs[lang].value;
+      });
     }
 
     if (nodeKey !== newKey) {
@@ -164,13 +174,51 @@ export default class Home extends Component {
     }, this.saveToFile);
   }
 
+  translateNode(id) {
+    const referenceLang = 'en';
+    const referenceText = this.refs[referenceLang].value;
+    if (_.isEmpty(_.trim(referenceText))) {
+      alert(`Reference value in (${langs[referenceLang]}) cannot be empty!`);
+      return;
+    }
+
+    const yandexAPIKey = this.state.yandexAPIKey;
+
+    _.keys(this.state.locales).forEach((locale) => {
+      const localeObject = this.state.locales[locale];
+      if (localeObject.lang === referenceLang) {
+        return;
+      }
+      const lang = localeObject.lang;
+      this.refs[lang].disabled = true;
+      axios.get(YANDEX_TRANSLATE_API, {
+        params: {
+          key: yandexAPIKey,
+          format: 'plain',
+          lang: `${referenceLang}-${lang}`,
+          text: referenceText
+        }
+      })
+      .then((response) => {
+        const text = response.data.text[0];
+        this.refs[lang].value = text;
+        this.refs[lang].disabled = false;
+      })
+      .catch((response) => {
+        alert(`Error fetching translation for ${langs[lang]}`);
+        this.refs[lang].disabled = false;
+      });
+
+    });
+  }
+
   saveToFile() {
     const locales = this.state.locales;
-    {_.keys(locales).map((locale) => {
+    _.keys(locales).map((locale) => {
       const localeObject = locales[locale];
-      const serializedData = localeSerializer(this.state.masterStructure, localeObject.name);
+      const serializedData = localeSerializer(this.state.masterStructure, localeObject.lang);
       ipcRenderer.send('save', localeObject.path, serializedData);
-    })};
+    });
   }
 
   formatTableKeyCol(key, data, isBeingAdded) {
@@ -256,10 +304,10 @@ export default class Home extends Component {
         {data.meta.type === 'NODE' ?
           <td colSpan={_.keys(this.state.locales).length}/> :
           _.keys(this.state.locales).map((locale) => {
-            const name = this.state.locales[locale].name;
+            const lang = this.state.locales[locale].lang;
             return (
-              <td key={name}>
-                {data.value[name]}
+              <td key={lang}>
+                {data.value[lang]}
               </td>
             );
           })
@@ -277,6 +325,12 @@ export default class Home extends Component {
               onClick={isBeingAdded ? this.addNode.bind(this, data.id) : this.updateNode.bind(this, data.id)}>
               <i className="fa fa-fw fa-lg fa-check"/>
             </button>
+            {data.meta.type === 'LEAF' ?
+              <button className="btn btn-xs btn-warning ln-row-cancel"
+                onClick={this.translateNode.bind(this, data.id)}>
+                <i className="fa fa-fw fa-lg fa-magic"/>
+              </button> : null
+            }
             <button className="btn btn-xs btn-danger ln-row-cancel"
               onClick={this.modifyNodeMode.bind(this, data.id, 'CANCEL')}>
               <i className="fa fa-fw fa-lg fa-ban"/>
@@ -286,13 +340,13 @@ export default class Home extends Component {
         {this.formatTableKeyCol(key, data, isBeingAdded)}
         {data.meta.type === 'LEAF' || isBeingAdded ?
           _.keys(this.state.locales).map((locale) => {
-            const name = this.state.locales[locale].name;
+            const lang = this.state.locales[locale].lang;
             return (
-              <td key={name}>
-                <textarea ref={locale}
+              <td key={lang}>
+                <textarea ref={lang}
                   type="text"
                   className="form-control"
-                  defaultValue={isBeingAdded ? null : data.value[name]}/>
+                  defaultValue={isBeingAdded ? null : data.value[lang]}/>
               </td>
             );
           })
@@ -319,7 +373,7 @@ export default class Home extends Component {
       }
 
       if (node.meta.type === 'NODE') {
-        _.each(_.keys(node.value).sort(), (key) => {
+        _.keys(node.value).sort().forEach((key) => {
           renderRow(key, (node.value)[key], node.meta.collapse || collapse);
         });
       }
@@ -342,9 +396,11 @@ export default class Home extends Component {
     _.keys(files).forEach((key) => {
       const path = files[key].path;
       const name = files[key].name;
+      const lang = name.split('.')[0];
       let localeObject = {
         name,
-        path
+        path,
+        lang
       };
 
       if (true || files[key].type === 'application/json') {
@@ -357,7 +413,7 @@ export default class Home extends Component {
       reader.onloadend = (e) => {
         const fileData = JSON.parse(e.target.result);
 
-        const parsedData = localeParse(fileData, name);
+        const parsedData = localeParse(fileData, lang);
         const combinedMasterStructure = _.merge(self.state.masterStructure, parsedData);
 
         self.setState({
@@ -433,9 +489,11 @@ export default class Home extends Component {
                     <th>Action</th>
                     <th>Key</th>
                     {_.keys(this.state.locales).map((locale) => {
-                      const name = this.state.locales[locale].name;
+                      const lang = this.state.locales[locale].lang;
                       return (
-                        <th className="locale-column" key={name}>{name}</th>
+                        <th className="locale-column" key={lang}>
+                          {langs[lang]}
+                        </th>
                       );
                     })}
                   </tr>
