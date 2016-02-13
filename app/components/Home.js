@@ -376,7 +376,7 @@ export default class Home extends Component {
   render() {
     return (
       <div id="home">
-        <nav className="navbar navbar-inverse">
+        <nav className="navbar navbar-inverse navbar-fixed-top">
           <div className="container-fluid">
             <div className="navbar-header">
               <button type="button" className="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
@@ -424,21 +424,27 @@ export default class Home extends Component {
             </div>
           </div>
         </nav>
-        <table className="table table-hover">
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Key</th>
-              {_.keys(this.state.locales).map((locale) => {
-                const name = this.state.locales[locale].name;
-                return (
-                  <th className="locale-column" key={name}>{name}</th>
-                );
-              })}
-            </tr>
-          </thead>
-          {this.renderTableBody()}
-        </table>
+        <div className="container-fluid">
+          <div className="row">
+            <div className="col-md-12">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Key</th>
+                    {_.keys(this.state.locales).map((locale) => {
+                      const name = this.state.locales[locale].name;
+                      return (
+                        <th className="locale-column" key={name}>{name}</th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                {this.renderTableBody()}
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

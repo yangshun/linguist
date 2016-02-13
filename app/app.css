@@ -1,5 +1,20 @@
+body {
+  background-color: #263238;
+  color: #fff;
+  padding-top: 70px;
+}
+
+table {
+  font-family: 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 300;
+}
+
 table .fa {
   cursor: pointer;
+}
+
+.table-hover > tbody > tr:hover {
+  background-color: #1f292f;
 }
 
 td:nth-child(1),
