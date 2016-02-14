@@ -583,6 +583,16 @@ export default class Home extends Component {
             </div>
           </div>
         </div>
+        <hr/>
+        <footer className="footer container-fluid">
+          <div className="row">
+            <div className="col-md-12">
+              <p className="text-center">
+                <a href="http://translate.yandex.com/">Powered by Yandex.Translate</a>
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
     );
   }

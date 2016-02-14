@@ -3,10 +3,28 @@ body {
   padding-top: 70px;
 }
 
+a {
+  color: #ff851b;
+}
+
+a:hover,
+a:focus {
+  color: #ff851b;
+  text-decoration: none;
+}
+
 .invisible {
   opacity: 0;
   -moz-opacity: 0;
   filter: alpha(opacity=0);
+}
+
+hr {
+  border-color: #aaa;
+}
+
+.footer {
+  margin: 10px;
 }
 
 table {
