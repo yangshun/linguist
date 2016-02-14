@@ -13,6 +13,11 @@ a:focus {
   text-decoration: none;
 }
 
+.form-control {
+  box-shadow: none;
+  -webkit-box-shadow: none;
+}
+
 .invisible {
   opacity: 0;
   -moz-opacity: 0;
@@ -20,7 +25,7 @@ a:focus {
 }
 
 hr {
-  border-color: #aaa;
+  border-color: #1f292f;
 }
 
 .footer {
@@ -45,6 +50,29 @@ td:nth-child(1),
 td:nth-child(2) {
   font-family: monospace;
   white-space: nowrap;
+}
+
+.highlight {
+  color: #ff851b;
+}
+
+.current-match .highlight {
+  border-radius: 2px;
+  background-color: #ff851b;
+  color: #fff;
+}
+
+.filter-results-display input {
+  padding-right: 50px;
+}
+
+.filter-results-display .filter-results-display-count {
+  color: #999;
+  height: 100%;
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  z-index: 4;
 }
 
 .invisible {

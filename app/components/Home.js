@@ -10,6 +10,8 @@ import { KEY_DELIMITER, ROOT_KEY, localeParse, localeSerializer, findNode,
   findNodeParent, createNewNode, updateNodeKeys } from '../utils/serializer';
 const langs = require('../utils/langs.json');
 
+import { highlightText } from '../utils/highlight';
+
 const MINIMUM_FILTER_MATCHING_LENGTH = 2;
 const YANDEX_TRANSLATE_API = 'https://translate.yandex.net/api/v1.5/tr.json/translate';
 
@@ -284,7 +286,7 @@ export default class Home extends Component {
     return false;
   }
 
-  formatTableKeyCol(key, data, isBeingAdded) {
+  formatTableKeyCol(key, data, isBeingAdded, matchesFilter) {
     const isBeingEdited = this.state.editingId === data.id;
     const isRootNode = data.id === ROOT_KEY;
     let tableCellStyle = null;
@@ -298,6 +300,11 @@ export default class Home extends Component {
       tableCellStyle = {
         paddingLeft: 24 * (data.meta.level + offset)
       };
+    }
+
+    let text = key;
+    if (matchesFilter) {
+      text = highlightText(text, this.state.filterText);
     }
 
     return (
@@ -317,7 +324,7 @@ export default class Home extends Component {
                 })}
                 onClick={this.toggleCollapseNode.bind(this, data.id)}/>
             }
-            <strong>{key}</strong>
+            <span dangerouslySetInnerHTML={{ __html: text }}/>
             {data.meta.type === 'NODE' ? ` {${_.keys(data.value).length}}` : null}
           </span>
         }
@@ -327,10 +334,12 @@ export default class Home extends Component {
 
   renderTableRow(key, data, collapse) {
     const isRootNode = data.id === ROOT_KEY;
+    const matchesFilter = this.keyMatchesFilter(key);
     return (
       <tr key={data.id} ref={data.id} className={classnames({
         hidden: collapse,
-        match: this.keyMatchesFilter(key)
+        match: matchesFilter,
+        'current-match': data.id === this.state.filterRows[this.state.currentFilterIndex]
       })}>
         <td>
           <div className="btn-group ls-edit-btns" role="group">
@@ -366,7 +375,7 @@ export default class Home extends Component {
             }
           </div>
         </td>
-        {this.formatTableKeyCol(key, data)}
+        {this.formatTableKeyCol(key, data, false, matchesFilter)}
         {data.meta.type === 'NODE' ?
           <td colSpan={_.keys(this.state.locales).length}/> :
           _.keys(this.state.locales).map((locale) => {
@@ -538,24 +547,28 @@ export default class Home extends Component {
                 </div>
               </div>
               <div className="navbar-form navbar-right" role="search">
-                <form className="form-group"
+                <form className="form-group filter-results-display"
                   onSubmit={this.nextFilterRow.bind(this)}>
-                  <input type="text"
-                    className="form-control"
-                    placeholder="Search"
-                    value={this.state.filterText}
-                    onChange={(e) => {
-                      this.setState({
-                        filterText: e.target.value
-                      });
-                    }}
-                    />
+                  <div className="input-group">
+                    <span className="input-group-addon">
+                      <i className="fa fa-search"/>
+                    </span>
+                    <span className={classnames('filter-results-display-count', {
+                      invisible: this.state.filterRows.length === 0 && this.state.filterText.length <= MINIMUM_FILTER_MATCHING_LENGTH
+                    })}>
+                      &nbsp;&nbsp;&nbsp;{this.state.currentFilterIndex + 1} of {this.state.filterRows.length}
+                    </span>
+                    <input type="text"
+                      className="form-control"
+                      placeholder="Search"
+                      value={this.state.filterText}
+                      onChange={(e) => {
+                        this.setState({
+                          filterText: e.target.value
+                        });
+                      }}/>
+                  </div>
                 </form>
-                <span className={classnames({
-                  invisible: this.state.filterRows.length === 0 && this.state.filterText.length <= MINIMUM_FILTER_MATCHING_LENGTH
-                })}>
-                  &nbsp;&nbsp;&nbsp;{this.state.currentFilterIndex + 1} of {this.state.filterRows.length} matches
-                </span>
               </div>
             </div>
           </div>
