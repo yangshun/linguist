@@ -46,6 +46,10 @@ table .fa {
   background-color: #314549;
 }
 
+td {
+  border-bottom: #314549;
+}
+
 td:nth-child(1),
 td:nth-child(2) {
   font-family: monospace;

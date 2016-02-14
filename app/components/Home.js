@@ -6,6 +6,7 @@ import classnames from 'classnames';
 
 const { ipcRenderer } = require('electron');
 
+import mousetrap from 'mousetrap';
 import { KEY_DELIMITER, ROOT_KEY, localeParse, localeSerializer, findNode,
   findNodeParent, createNewNode, updateNodeKeys } from '../utils/serializer';
 const langs = require('../utils/langs.json');
@@ -39,6 +40,24 @@ export default class Home extends Component {
   }
 
   componentDidMount() {
+    mousetrap.bind('mod+f', () => {
+      this.refs.filterInput.select();
+    });
+
+    const filterInput = this.refs.filterInput;
+    mousetrap(filterInput).bind('mod+f', () => {
+      this.refs.filterInput.select();
+    });
+    mousetrap(filterInput).bind('esc', () => {
+      this.refs.filterInput.blur();
+    });
+    mousetrap(filterInput).bind('enter', () => {
+      this.traverseFilterRow(false);
+    });
+    mousetrap(filterInput).bind('shift+enter', () => {
+      this.traverseFilterRow(true);
+    });
+
     // var home = document.getElementById('home');
     // home.ondragover = function () {
     //   return false;
@@ -52,6 +71,10 @@ export default class Home extends Component {
     //   console.log('File you dragged here is', file.path);
     //   return false;
     // };
+  }
+
+  componentWillUnmount() {
+    mousetrap.reset();
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -75,20 +98,18 @@ export default class Home extends Component {
       this.setState({
         filterRows: filterRows,
         currentFilterIndex: -1
-      }, this.nextFilterRow);
+      }, this.traverseFilterRow);
     }
   }
 
-  nextFilterRow(event) {
-    if (event) {
-      event.preventDefault();
-    }
-
+  traverseFilterRow(reverse) {
     if (this.state.filterRows.length === 0) {
       return;
     }
 
-    const currentFilterIndex = (this.state.currentFilterIndex + 1) % this.state.filterRows.length;
+    const offset = reverse ? -1 : 1;
+
+    const currentFilterIndex = (this.state.currentFilterIndex + offset + this.state.filterRows.length) % this.state.filterRows.length;
     const filterRowId = this.state.filterRows[currentFilterIndex];
     const row = this.refs[filterRowId];
 
@@ -337,7 +358,7 @@ export default class Home extends Component {
     const matchesFilter = this.keyMatchesFilter(key);
     return (
       <tr key={data.id} ref={data.id} className={classnames({
-        hidden: collapse,
+        hidden: collapse && !matchesFilter,
         match: matchesFilter,
         'current-match': data.id === this.state.filterRows[this.state.currentFilterIndex]
       })}>
@@ -547,8 +568,7 @@ export default class Home extends Component {
                 </div>
               </div>
               <div className="navbar-form navbar-right" role="search">
-                <form className="form-group filter-results-display"
-                  onSubmit={this.nextFilterRow.bind(this)}>
+                <div className="form-group filter-results-display">
                   <div className="input-group">
                     <span className="input-group-addon">
                       <i className="fa fa-search"/>
@@ -559,6 +579,7 @@ export default class Home extends Component {
                       &nbsp;&nbsp;&nbsp;{this.state.currentFilterIndex + 1} of {this.state.filterRows.length}
                     </span>
                     <input type="text"
+                      ref="filterInput"
                       className="form-control"
                       placeholder="Search"
                       value={this.state.filterText}
@@ -568,7 +589,7 @@ export default class Home extends Component {
                         });
                       }}/>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
           </div>
