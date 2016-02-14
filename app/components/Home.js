@@ -299,12 +299,8 @@ export default class Home extends Component {
     if (this.state.filterText.length < MINIMUM_FILTER_MATCHING_LENGTH) {
       return false;
     }
-
-    if (key.indexOf(this.state.filterText) > -1) {
-      return true;
-    }
-
-    return false;
+    var re = new RegExp(this.state.filterText, 'ig');
+    return re.exec(key);
   }
 
   formatTableKeyCol(key, data, isBeingAdded, matchesFilter) {
@@ -341,7 +337,7 @@ export default class Home extends Component {
               <i className={classnames('ln-caret fa fa-fw fa-lg', {
                 'fa-caret-down': !data.meta.collapse,
                 'fa-caret-right': data.meta.collapse,
-                'invisible': data.meta.type === 'LEAF'
+                invisible: data.meta.type === 'LEAF'
                 })}
                 onClick={this.toggleCollapseNode.bind(this, data.id)}/>
             }
@@ -622,7 +618,7 @@ export default class Home extends Component {
           <div className="row">
             <div className="col-md-12">
               <p className="text-center">
-                <a href="http://translate.yandex.com/">Powered by Yandex.Translate</a>
+                <a href="http://translate.yandex.com/" target="_blank">Powered by Yandex.Translate</a>
               </p>
             </div>
           </div>
