@@ -1,10 +1,16 @@
 body {
   background-color: #263238;
-  color: #fff;
   padding-top: 70px;
 }
 
+.invisible {
+  opacity: 0;
+  -moz-opacity: 0;
+  filter: alpha(opacity=0);
+}
+
 table {
+  color: #fff;
   font-family: 'Helvetica Neue', Helvetica, sans-serif;
   font-weight: 300;
 }
@@ -13,11 +19,7 @@ table .fa {
   cursor: pointer;
 }
 
-.table-hover > tbody > tr:hover {
-  background-color: #1f292f;
-}
-
-.table-hover > tbody > tr.match {
+.table > tbody > tr.match {
   background-color: #314549;
 }
 

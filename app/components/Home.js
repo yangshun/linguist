@@ -10,6 +10,7 @@ import { KEY_DELIMITER, ROOT_KEY, localeParse, localeSerializer, findNode,
   findNodeParent, createNewNode, updateNodeKeys } from '../utils/serializer';
 const langs = require('../utils/langs.json');
 
+const MINIMUM_FILTER_MATCHING_LENGTH = 2;
 const YANDEX_TRANSLATE_API = 'https://translate.yandex.net/api/v1.5/tr.json/translate';
 
 export default class Home extends Component {
@@ -29,7 +30,9 @@ export default class Home extends Component {
       },
       addingId: null,
       editingId: null,
-      filterText: ''
+      filterText: '',
+      filterRows: [],
+      currentFilterIndex: -1
     };
   }
 
@@ -47,6 +50,53 @@ export default class Home extends Component {
     //   console.log('File you dragged here is', file.path);
     //   return false;
     // };
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.filterText !== this.state.filterText) {
+      const filterRows = [];
+
+      const traverseNode = (key, node) => {
+        if (this.keyMatchesFilter(key)) {
+          filterRows.push(node.id);
+        }
+
+        if (node.meta.type === 'NODE') {
+          _.keys(node.value).sort().forEach((key) => {
+            traverseNode(key, (node.value)[key]);
+          });
+        }
+      }
+
+      traverseNode('Object', this.state.masterStructure);
+
+      this.setState({
+        filterRows: filterRows,
+        currentFilterIndex: -1
+      }, this.nextFilterRow);
+    }
+  }
+
+  nextFilterRow(event) {
+    if (event) {
+      event.preventDefault();
+    }
+
+    if (this.state.filterRows.length === 0) {
+      return;
+    }
+
+    const currentFilterIndex = (this.state.currentFilterIndex + 1) % this.state.filterRows.length;
+    const filterRowId = this.state.filterRows[currentFilterIndex];
+    const row = this.refs[filterRowId];
+
+    row.scrollIntoView(true);
+    if (document.body.clientHeight - row.offsetTop > window.innerHeight / 2) {
+      window.scrollBy(0, -window.innerHeight / 2);
+    }
+    this.setState({
+      currentFilterIndex
+    });
   }
 
   updateYandexAPIKey(event) {
@@ -223,8 +273,7 @@ export default class Home extends Component {
   }
 
   keyMatchesFilter(key) {
-    const MINIMUM_MATCHING_LENGTH = 2;
-    if (this.state.filterText.length < MINIMUM_MATCHING_LENGTH) {
+    if (this.state.filterText.length < MINIMUM_FILTER_MATCHING_LENGTH) {
       return false;
     }
 
@@ -279,7 +328,7 @@ export default class Home extends Component {
   renderTableRow(key, data, collapse) {
     const isRootNode = data.id === ROOT_KEY;
     return (
-      <tr key={data.id} className={classnames({
+      <tr key={data.id} ref={data.id} className={classnames({
         hidden: collapse,
         match: this.keyMatchesFilter(key)
       })}>
@@ -489,7 +538,8 @@ export default class Home extends Component {
                 </div>
               </div>
               <div className="navbar-form navbar-right" role="search">
-                <div className="form-group">
+                <form className="form-group"
+                  onSubmit={this.nextFilterRow.bind(this)}>
                   <input type="text"
                     className="form-control"
                     placeholder="Search"
@@ -500,8 +550,12 @@ export default class Home extends Component {
                       });
                     }}
                     />
-                </div>
-                <button type="submit" className="btn btn-default">Search</button>
+                </form>
+                <span className={classnames({
+                  invisible: this.state.filterRows.length === 0 && this.state.filterText.length <= MINIMUM_FILTER_MATCHING_LENGTH
+                })}>
+                  &nbsp;&nbsp;&nbsp;{this.state.currentFilterIndex + 1} of {this.state.filterRows.length} matches
+                </span>
               </div>
             </div>
           </div>
@@ -509,7 +563,7 @@ export default class Home extends Component {
         <div className="container-fluid">
           <div className="row">
             <div className="col-md-12">
-              <table className="table table-hover">
+              <table className="table">
                 <thead>
                   <tr>
                     <th>Action</th>
