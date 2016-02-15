@@ -248,7 +248,7 @@ export default class Home extends Component {
     }, this.saveToFile);
   }
 
-  translateNode(id) {
+  translateNode() {
     const yandexAPIKey = this.state.yandexAPIKey;
     if (_.isEmpty(_.trim(yandexAPIKey))) {
       alert('You have to specify a Yandex API key before you can use the translation' +
@@ -422,9 +422,9 @@ export default class Home extends Component {
               onClick={isBeingAdded ? this.addNode.bind(this, data.id) : this.updateNode.bind(this, data.id)}>
               <i className="fa fa-fw fa-lg fa-check"/>
             </button>
-            {data.meta.type === 'LEAF' ?
+            {data.meta.type === 'LEAF' || isBeingAdded ?
               <button className="btn btn-xs btn-warning ln-row-cancel"
-                onClick={this.translateNode.bind(this, data.id)}>
+                onClick={this.translateNode.bind(this)}>
                 <i className="fa fa-fw fa-lg fa-magic"/>
               </button> : null
             }
