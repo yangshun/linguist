@@ -249,14 +249,19 @@ export default class Home extends Component {
   }
 
   translateNode(id) {
+    const yandexAPIKey = this.state.yandexAPIKey;
+    if (_.isEmpty(_.trim(yandexAPIKey))) {
+      alert('You have to specify a Yandex API key before you can use the translation' +
+            'feature. Get one from https://tech.yandex.com/translate/ today.');
+      return;
+    }
+
     const referenceLang = 'en';
     const referenceText = this.refs[referenceLang].value;
     if (_.isEmpty(_.trim(referenceText))) {
       alert(`Reference value in (${langs[referenceLang]}) cannot be empty!`);
       return;
     }
-
-    const yandexAPIKey = this.state.yandexAPIKey;
 
     _.keys(this.state.locales).forEach((locale) => {
       const localeObject = this.state.locales[locale];
